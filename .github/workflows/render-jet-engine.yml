@@ -1,0 +1,46 @@
+
+name: Render Jet Engine Video
+
+on:
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Extract Jet Engine project
+        run: unzip -o jet-engine-remotion.zip
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgbm1 libdrm2 libxkbcommon0 libasound2t64 libxcomposite1 libxdamage1 libxfixes3 libnss3 libatk1.0-0 libatk-bridge2.0-0 libxrandr2
+
+      - name: Install packages
+        working-directory: jet-engine-remotion
+        run: npm install
+
+      - name: Prepare browser
+        working-directory: jet-engine-remotion
+        run: npx remotion browser ensure
+
+      - name: Render Jet Engine
+        working-directory: jet-engine-remotion
+        run: npm run render
+
+      - name: Upload video
+        uses: actions/upload-artifact@v4
+        with:
+          name: jet-engine-video
+          path: jet-engine-remotion/out/jet-engine.mp4
+          if-no-files-found: error
+          
