@@ -1,0 +1,58 @@
+
+name: Render Jet Engine Blender Video
+
+on:
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Blender and FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender ffmpeg python3-numpy unzip
+
+      - name: Extract project ZIP
+        run: |
+          unzip -oq jet_engine_video_generator_v0_1.zip
+          test -d jet_engine_video_generator
+
+      - name: Check voiceover
+        run: |
+          test -f assets/voiceover.m4a
+
+      - name: Render 3D animation
+        working-directory: jet_engine_video_generator
+        run: |
+          mkdir -p render output
+          blender -b -P scripts/create_scene.py
+
+      - name: Generate music and sound effects
+        working-directory: jet_engine_video_generator
+        run: python3 scripts/make_audio.py
+
+      - name: Combine video and audio
+        working-directory: jet_engine_video_generator
+        run: |
+          ffmpeg -y -framerate 30 -i render/frame_%04d.png \
+            -i ../assets/voiceover.m4a \
+            -i render/music_sfx.wav \
+            -filter_complex "[1:a]aresample=48000[voice];[2:a]volume=0.38[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=0,alimiter=limit=0.95[a]" \
+            -map 0:v -map "[a]" \
+            -c:v libx264 -preset veryfast -crf 19 \
+            -pix_fmt yuv420p -r 30 -c:a aac -shortest \
+            output/jet-engine-short.mp4
+
+      - name: Upload final video
+        uses: actions/upload-artifact@v4
+        with:
+          name: jet-engine-short
+          path: jet_engine_video_generator/output/jet-engine-short.mp4
+          if-no-files-found: error
+          
