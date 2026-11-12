@@ -1,0 +1,46 @@
+
+name: Render Vending Machine Video
+
+on:
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Extract project
+        run: unzip -o vending-project.zip
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgbm1 libdrm2 libxkbcommon0 libasound2t64 libxcomposite1 libxdamage1 libxfixes3 libnss3 libatk1.0-0 libatk-bridge2.0-0 libxrandr2
+
+      - name: Install npm packages
+        working-directory: vending-project
+        run: npm install
+
+      - name: Prepare browser
+        working-directory: vending-project
+        run: npx remotion browser ensure
+
+      - name: Render video
+        working-directory: vending-project
+        run: npm run render
+
+      - name: Upload MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: vending-machine-video
+          path: vending-project/out/vending.mp4
+          if-no-files-found: error
+          
